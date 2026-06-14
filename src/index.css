@@ -1,0 +1,391 @@
+/* ============================================
+   CRT 终端风格全局样式
+   ============================================ */
+
+/* CSS 变量定义 */
+:root {
+  /* 终端颜色方案 */
+  --terminal-bg: #0a0a0a;
+  --terminal-text: #e5e7eb;
+  --terminal-green: #00ff00;
+  --terminal-green-dim: #00cc00;
+  --terminal-cyan: #00ffff;
+  --terminal-yellow: #ffff00;
+  --terminal-red: #ff4444;
+  --terminal-amber: #ffb000;
+
+  /* 光标样式 */
+  --cursor-color: #00ff00;
+
+  /* 字体 */
+  --font-mono:
+    "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+
+  /* 动画速度 */
+  --animation-speed: 1s;
+}
+
+/* 全局基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--terminal-bg);
+  color: var(--terminal-text);
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* ============================================
+   CRT 显示器效果
+   ============================================ */
+
+/* 扫描线效果 */
+.scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* 微弱发光叠加层 */
+.glow-overlay {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 255, 0, 0.02) 0%,
+    transparent 70%
+  );
+  animation: glowPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes glowPulse {
+  0% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* CRT 屏幕曲率效果（可选） */
+.terminal-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  pointer-events: none;
+  z-index: 30;
+  opacity: 0.15;
+}
+
+/* ============================================
+   光标动画
+   ============================================ */
+
+@keyframes cursorBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.terminal-cursor {
+  display: inline-block;
+  font-weight: normal;
+  margin-left: 1px;
+}
+
+/* ============================================
+   输出显示区域样式
+   ============================================ */
+
+.output-display {
+  /* 自定义滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 0, 0.3) transparent;
+}
+
+.output-line {
+  word-break: break-word;
+  line-height: 1.6;
+  min-height: 1.5em;
+  animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 不同输出类型的颜色 */
+.output-line.text-cyan-400 {
+  color: var(--terminal-cyan);
+}
+
+.output-line.text-red-500 {
+  color: var(--terminal-red);
+  text-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}
+
+.output-line.text-green-400 {
+  color: var(--terminal-green);
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.4);
+}
+
+.output-line.text-yellow-400 {
+  color: var(--terminal-amber);
+  text-shadow: 0 0 8px rgba(255, 176, 0, 0.4);
+}
+
+.output-line.text-gray-300 {
+  color: var(--terminal-text);
+}
+
+/* ============================================
+   命令行输入区域样式
+   ============================================ */
+
+.command-line {
+  position: relative;
+  min-height: 32px;
+  padding-left: 0;
+}
+
+.command-line input {
+  caret-color: transparent !important;
+}
+
+/* 命令行提示符样式 */
+.command-line .text-green-400 {
+  color: var(--terminal-green);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+  font-weight: 600;
+}
+
+/* ============================================
+   终端头部和底部栏样式
+   ============================================ */
+
+.terminal-header {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* 窗口控制按钮动画 */
+.terminal-header > div > div {
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.terminal-header > div > div:hover {
+  filter: brightness(1.3);
+  transform: scale(1.1);
+}
+
+/* 底部状态栏 */
+footer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+footer:hover {
+  opacity: 1;
+}
+
+/* ============================================
+   快速连接卡片网格布局
+   ============================================ */
+
+.quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.quick-link-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quick-link-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 255, 0, 0.1);
+}
+
+/* ============================================
+   配置面板样式
+   ============================================ */
+
+.config-panel {
+  max-width: 480px;
+  margin: 16px auto;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 颜色选择器美化 */
+input[type="color"] {
+  -webkit-appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* 下拉选择器美化 */
+select {
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+/* ============================================
+   Tab 补全建议框样式
+   ============================================ */
+
+.absolute.left-0.top-full.mt-1 {
+  animation: fadeIn 0.2s ease-in;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+
+@media (max-width: 768px) {
+  :root {
+    font-size: 14px;
+  }
+
+  .terminal-container {
+    padding: 12px !important;
+  }
+
+  .quick-links-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+  }
+
+  .config-panel {
+    max-width: 100%;
+    margin: 12px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    font-size: 13px;
+  }
+
+  .output-display {
+    font-size: 12px;
+  }
+}
+
+/* ============================================
+   打印样式（隐藏装饰元素）
+   ============================================ */
+
+@media print {
+  .scanlines,
+  .glow-overlay {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   无障碍支持
+   ============================================ */
+
+/* contenteditable 焦点时移除所有边框（最高优先级） */
+.command-line [contenteditable]:focus,
+.command-line [contenteditable]:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 焦点可见性 - 排除 contenteditable */
+*:focus-visible {
+  outline: 2px solid var(--terminal-green);
+  outline-offset: 2px;
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .scanlines {
+    display: none;
+  }
+}

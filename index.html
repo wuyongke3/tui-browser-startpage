@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 终端风格主题色 -->
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+
+    <!-- 等宽字体（终端风格） -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- 防止文本选择（增强终端体验） -->
+    <style>
+      * {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      /* 允许输入框选择 */
+      input,
+      textarea {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+      }
+
+      /* 隐藏滚动条但保持功能 */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 0, 0.3);
+        border-radius: 3px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 255, 0, 0.5);
+      }
+    </style>
+
+    <title>Terminal Startpage - by easygo</title>
+
+    <!-- 版权与授权信息 -->
+    <meta name="author" content="easygo" />
+    <meta name="copyright" content="© 2024-2026 easygo. All Rights Reserved." />
+    <meta name="license" content="Commercial use requires authorization. Contact: https://github.com/wuyongke3" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
