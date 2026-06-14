@@ -158,6 +158,12 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
   const [isExecuting, setIsExecuting] = useState(false);
   const [progressInfo, setProgressInfo] = useState<{ value: number; message: string } | null>(null);
 
+  // 字体大小状态（支持 Ctrl+滚轮缩放）
+  const [fontSize, setFontSize] = useState(() => {
+    try { return parseInt(localStorage.getItem('terminal_font_size') || '14', 10) }
+    catch { return 14 }
+  });
+
   // 初始化引擎
   useEffect(() => {
     let engine: ITerminalAPI;
@@ -230,6 +236,24 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       onOutputChange(outputs);
     }
   }, [outputs, onOutputChange, isReady]);
+
+  // Ctrl+滚轮缩放字体
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -1 : 1;
+        setFontSize(prev => {
+          const next = Math.min(32, Math.max(8, prev + delta));
+          localStorage.setItem('terminal_font_size', String(next));
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
 
   /**
    * 执行命令
@@ -410,6 +434,8 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       style={{
         ...getThemeStyle(),
         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        fontSize: `${fontSize}px`,
+        paddingLeft: `14px`,
       }}
       onClick={() => inputRef.current?.focus()}
     >
@@ -436,8 +462,8 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
         {/* 输出显示 */}
         <OutputDisplay outputs={outputs} endRef={outputEndRef} />
 
-        {/* 进度条 - 命令执行中显示 */}
-        {isExecuting && (
+        {/* 进度条 - 仅当命令主动报告进度时显示（避免快速命令闪烁） */}
+        {progressInfo && (
           <div className="mt-2">
             <ProgressBar
               value={progressInfo?.value || 0}

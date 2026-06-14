@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:ext": "node scripts/build-ext.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
