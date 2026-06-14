@@ -12,7 +12,7 @@ import type {
 } from '../lib/types';
 import { createTerminalEngine } from '../../lib/TerminalEngine';
 import { ThemeManager, PRESET_THEMES } from '../../lib/ThemeManager';
-import { builtinCommandsPlugin, handleUseSelection, handleConfigInput } from '../../plugins/BuiltinCommands';
+import { builtinCommandsPlugin, handleUseSelection } from '../../plugins/BuiltinCommands';
 
 // 子组件
 import Cursor from './Cursor';
@@ -149,7 +149,6 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
   const [currentInput, setCurrentInput] = useState('');
   // 优先使用传入的 username，否则自动获取系统用户名
   const [currentUsername, setCurrentUsername] = useState(username || getSystemUsername());
-  const [isConfigMode, setIsConfigMode] = useState(false);
   const [isUseMode, setIsUseMode] = useState(false);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -188,7 +187,6 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       engine.onStateUpdate((state) => {
         setOutputs([...state.outputs]);
         setCurrentUsername(state.username);
-        setIsConfigMode(state.isConfigMode);
         setIsUseMode(state.isUseMode);
         setCommandHistory([...state.commandHistory]);
         setIsExecuting(state.isExecuting || false);
@@ -271,13 +269,6 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       return;
     }
 
-    if (isConfigMode) {
-      // config 模式：处理配置命令
-      handleConfigInput(input, { terminal: engine });
-      setCurrentInput('');
-      return;
-    }
-
     // 命令执行前回调
     if (onCommandExecute) {
       const parts = input.trim().split(/\s+/);
@@ -293,7 +284,7 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
     if (inputRef.current) {
       inputRef.current.textContent = '';
     }
-  }, [isUseMode, isConfigMode, onCommandExecute]);
+  }, [isUseMode, onCommandExecute]);
 
   /**
    * 处理键盘事件
@@ -333,11 +324,7 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
           setCurrentInput('');
           setSuggestion('');
           if (inputRef.current) inputRef.current.textContent = '';
-          
-          if (isConfigMode) {
-            setIsConfigMode(false);
-            engineRef.current?.setState(s => ({ ...s, isConfigMode: false }));
-          }
+
           if (isUseMode) {
             setIsUseMode(false);
             engineRef.current?.setState(s => ({ ...s, isUseMode: false }));
@@ -360,7 +347,7 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
         }
         break;
     }
-  }, [currentInput, isConfigMode, isUseMode, commandHistory.length, isExecuting]);
+  }, [currentInput, isUseMode, commandHistory.length, isExecuting]);
 
   /**
    * Tab 补全
@@ -405,7 +392,6 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
    * 获取当前提示符
    */
   const getPromptPrefix = (): string => {
-    if (isConfigMode) return `${currentUsername}(config)`;
     if (isUseMode) return `${currentUsername}(select)`;
     return currentUsername;
   };

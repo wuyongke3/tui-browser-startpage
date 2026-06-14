@@ -229,127 +229,65 @@ const searchCommand: ICommandDefinition = {
   },
 };
 
-/** 配置命令 */
+/** 配置命令 - 直接设置配置项（无交互模式） */
 const configCommand: ICommandDefinition = {
   name: 'config',
-  description: '进入配置模式或设置配置项',
+  description: '查看或设置终端配置项',
   usage: 'config [选项] [值]',
   execute(ctx) {
-    // 如果没有参数，进入配置模式
+    // 无参数 → 显示当前配置
     if (ctx.args.length === 0) {
-      ctx.output('\n进入配置模式。输入 "help" 查看可用命令，"exit" 退出。\n', 'info');
-      ctx.setState((state) => ({ ...state, isConfigMode: true }));
+      const cfg = ctx.terminal.getConfig();
+      const state = ctx.terminal.getState();
+      ctx.output(`
+当前配置:
+  用户名:   ${state.username}
+  背景图片: ${cfg.backgroundImage || '(未设置)'}
+  背景颜色: ${cfg.backgroundColor || '#0a0a0a'}
+  光标颜色: ${cfg.cursorColor || '#00ff00'}
+  光标样式: ${cfg.cursorStyle || 'blink'}
+`, 'info');
+      ctx.output('\n用法: config <选项> <值>\n', 'output');
       return;
     }
 
     // 直接设置配置项
-    const configCmd = ctx.args[0].toLowerCase();
-    const configValue = ctx.args.slice(1).join(' ');
+    const subCmd = ctx.args[0].toLowerCase();
+    const value = ctx.args.slice(1).join(' ');
 
-    switch (configCmd) {
+    switch (subCmd) {
       case 'background':
-        if (configValue) {
-          if (configValue.startsWith('#') || configValue.startsWith('rgb')) {
-            ctx.terminal.updateConfig({ backgroundColor: configValue });
-            ctx.output(`背景颜色已设置为: ${configValue}`, 'success');
-          } else {
-            ctx.terminal.updateConfig({ backgroundImage: configValue });
-            ctx.output('背景图片已设置', 'success');
-          }
+        if (!value) { ctx.output('请提供背景 URL 或颜色值', 'error'); break; }
+        if (value.startsWith('#') || value.startsWith('rgb')) {
+          ctx.terminal.updateConfig({ backgroundColor: value });
+          ctx.output(`背景颜色已设置为: ${value}`, 'success');
         } else {
-          ctx.output('请提供背景 URL 或颜色值', 'error');
+          ctx.terminal.updateConfig({ backgroundImage: value });
+          ctx.output('背景图片已设置', 'success');
         }
         break;
 
       case 'cursor-color':
-        if (configValue) {
-          ctx.terminal.updateConfig({ cursorColor: configValue });
-          ctx.output(`光标颜色已设置为: ${configValue}`, 'success');
-        } else {
-          ctx.output('请提供颜色值', 'error');
-        }
+        if (!value) { ctx.output('请提供颜色值', 'error'); break; }
+        ctx.terminal.updateConfig({ cursorColor: value });
+        ctx.output(`光标颜色已设置为: ${value}`, 'success');
         break;
 
       case 'cursor-style': {
-        const validStyles = ['blink', 'static', 'underline', 'block'];
-        if (validStyles.includes(configValue)) {
-          ctx.terminal.updateConfig({ cursorStyle: configValue as any });
-          ctx.output(`光标样式已设置为: ${configValue}`, 'success');
-        } else {
-          ctx.output(`无效的光标样式。可选值: ${validStyles.join(', ')}`, 'error');
+        const valid = ['blink', 'static', 'underline', 'block'];
+        if (!valid.includes(value)) {
+          ctx.output(`无效样式。可选值: ${valid.join(', ')}`, 'error'); break;
         }
-        break;
-      }
-
-      case 'username':
-        if (configValue) {
-          ctx.terminal.setUsername(configValue);
-          ctx.terminal.updateConfig({ username: configValue });
-          ctx.output(`用户名已设置为: ${configValue}`, 'success');
-        } else {
-          ctx.output('请提供用户名', 'error');
-        }
-        break;
-
-      case 'show': {
-        const config = ctx.terminal.getConfig();
-        const state = ctx.terminal.getState();
-        const configDisplay = `
-当前配置:
-  背景图片: ${config.backgroundImage || '(未设置)'}
-  背景颜色: ${config.backgroundColor || '#0a0a0a'}
-  光标颜色: ${config.cursorColor || '#00ff00'}
-  光标样式: ${config.cursorStyle || 'blink'}
-  用户名:   ${state.username}
-`;
-        ctx.output(configDisplay);
+        ctx.terminal.updateConfig({ cursorStyle: value as any });
+        ctx.output(`光标样式已设置为: ${value}`, 'success');
         break;
       }
 
       default:
-        ctx.output(`未知配置选项: "${configCmd}"`, 'error');
+        ctx.output(`未知配置项: "${subCmd}"\n可用项: background, cursor-color, cursor-style`, 'error');
     }
   },
 };
-
-/** 配置模式内的命令处理 */
-export function handleConfigInput(
-  input: string,
-  ctx: { terminal: ReturnType<typeof import('../lib/TerminalEngine').createTerminalEngine> }
-): boolean {
-  const trimmed = input.toLowerCase().trim();
-
-  // 退出命令
-  if (trimmed === 'exit' || trimmed === 'quit' || trimmed === 'q') {
-    ctx.setState((state) => ({ ...state, isConfigMode: false }));
-    ctx.output('已退出配置模式。', 'success');
-    return true;
-  }
-
-  // 帮助命令
-  if (trimmed === 'help') {
-    const configHelp = `
-配置模式命令:
-  background <url|color>  - 设置背景（URL 或颜色值）
-  cursor-color <color>    - 设置光标颜色
-  cursor-style <style>   - 设置光标样式 (blink/static/underline/block)
-  username <name>         - 设置显示的用户名
-  show                    - 显示当前配置
-  exit/quit               - 退出配置模式
-`;
-    ctx.output(configHelp, 'info');
-    return true;
-  }
-
-  // 其他命令作为 config 的子命令执行
-  configCommand.execute({
-    ...ctx,
-    rawInput: `config ${input}`,
-    args: input.split(/\s+/),
-  });
-
-  return true;
-}
 
 /**
  * 内置命令插件定义
@@ -379,5 +317,4 @@ export {
   useCommand,
   addCommand,
   searchCommand,
-  configCommand,
 };

@@ -286,6 +286,33 @@ const clearCacheCommand: ICommandDefinition = {
 };
 
 /**
+ * 用户名设置命令 - 快速修改显示的用户名
+ */
+const usernameCommand: ICommandDefinition = {
+  name: 'username',
+  description: '查看或修改当前用户名',
+  usage: 'username [新用户名]',
+  aliases: ['user', 'whoami'],
+  execute(ctx) {
+    const newName = ctx.args[0];
+
+    if (!newName?.trim()) {
+      // 无参数 → 显示当前用户名
+      const state = ctx.getState();
+      ctx.output(`\n  当前用户名: ${state.username}\n`, 'info');
+      ctx.output('使用方法: username <新名字>\n', 'output');
+      return;
+    }
+
+    // 设置新用户名
+    const name = newName.trim();
+    ctx.terminal.setUsername(name);
+    ctx.output(`\n  ✓ 用户名已设置为: ${name}\n`, 'success');
+    ctx.output(`  提示符已更新为: ${name}>\n`, 'info');
+  },
+};
+
+/**
  * 示例插件 - 扩展命令集
  * 
  * 这个插件展示了如何:
@@ -307,6 +334,7 @@ export const exampleCommandsPlugin: IPlugin = {
     themeCommand,
     sysinfoCommand,
     historyCommand,
+    usernameCommand,
     exportCommand,
     importCommand,
     clearCacheCommand,
