@@ -401,13 +401,22 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
     const config = engineRef.current?.getConfig();
     const style: React.CSSProperties = {};
 
+    // 优先使用用户配置的背景，否则使用默认底图 bg.png
     if (config?.backgroundImage) {
       style.backgroundImage = `url(${config.backgroundImage})`;
       style.backgroundSize = 'cover';
       style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
     } else {
-      style.backgroundColor = config?.backgroundColor || '#0a0a0a';
+      // 默认全屏底图
+      style.backgroundImage = 'url(/bg.png)';
+      style.backgroundSize = 'cover';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
     }
+
+    // 底层深色背景（底图加载前的兜底 + 半透明叠加）
+    style.backgroundColor = config?.backgroundColor || '#0a0a0a';
 
     style.height = typeof height === 'number' ? `${height}px` : height;
 
@@ -425,6 +434,16 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       }}
       onClick={() => inputRef.current?.focus()}
     >
+      {/* 玻璃磨砂遮罩层 - 叠加在底图之上 */}
+      <div
+        className="glass-overlay absolute inset-0 pointer-events-none z-[5]"
+        style={{
+          background: 'linear-gradient(135deg, rgba(0, 10, 20, 0.75) 0%, rgba(5, 15, 25, 0.65) 50%, rgba(0, 8, 16, 0.72) 100%)',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
+        }}
+      />
+
       {/* CRT 效果层 */}
       <div className="scanlines absolute inset-0 pointer-events-none z-10 opacity-10" />
       <div className="glow-overlay absolute inset-0 pointer-events-none z-0" />
