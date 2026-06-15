@@ -141,6 +141,11 @@ export class CommandRegistry {
     const command = this.get(commandName);
 
     if (!command) {
+      // 非指令关键字 → 默认走 search
+      const searchCmd = this.get('search');
+      if (searchCmd) {
+        return await this.execute(`search ${trimmed}`, context);
+      }
       context.output(`未知命令: "${commandName}"。输入 "help" 查看可用命令。`, 'error');
       return { success: false };
     }

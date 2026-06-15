@@ -143,10 +143,13 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
   const engineRef = useRef<ITerminalAPI | null>(null);
   const inputRef = useRef<HTMLElement>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
+  const commandLineRef = useRef<HTMLDivElement>(null); // 输入行容器，用于光标定位
 
   // 状态
   const [outputs, setOutputs] = useState<ITerminalOutput[]>([]);
   const [currentInput, setCurrentInput] = useState('');
+  // 光标跟随位置（相对于 command-line 容器）
+  const [cursorPosition, setCursorPosition] = useState<{ top: number; left: number; height: number } | null>(null);
   // 优先使用传入的 username，否则自动获取系统用户名
   const [currentUsername, setCurrentUsername] = useState(username || getSystemUsername());
   const [isUseMode, setIsUseMode] = useState(false);
@@ -252,6 +255,75 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
     window.addEventListener('wheel', handleWheel, { passive: false });
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
+
+  /**
+   * 计算光标在输入行中的精确位置
+   * 基于 Selection API + Range.getClientRects()
+   */
+  const updateCursorPosition = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount || !inputRef.current || !commandLineRef.current) {
+      return; // 容器未就绪时不更新，保留上次位置
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // 光标必须在 contenteditable 输入区域内
+    if (!inputRef.current.contains(range.startContainer)) {
+      return;
+    }
+
+    // 创建一个 0 宽度的 range 来获取光标精确位置
+    const cursorRange = document.createRange();
+    cursorRange.setStart(range.startContainer, range.startOffset);
+    cursorRange.collapse(true);
+
+    const rects = cursorRange.getClientRects();
+    const containerRect = commandLineRef.current.getBoundingClientRect();
+
+    if (rects.length === 0) {
+      // 空输入时 getClientRects() 无结果 → 用 input 元素自身位置做 fallback
+      const inputRect = inputRef.current.getBoundingClientRect();
+      setCursorPosition({
+        top: inputRect.top - containerRect.top,
+        left: inputRect.left - containerRect.left,
+        height: inputRect.height || 18,
+      });
+      return;
+    }
+
+    const rect = rects[0];
+    setCursorPosition({
+      top: rect.top - containerRect.top,
+      left: rect.left - containerRect.left,
+      height: rect.height || 18,
+    });
+  }, []);
+
+  // 光标位置跟随：监听输入区域的键盘/鼠标事件和全局选区变化
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+
+    // 键盘输入、鼠标点击/松开时更新位置
+    const events = ['keyup', 'mouseup', 'click'] as const;
+    events.forEach(event =>
+      el.addEventListener(event, updateCursorPosition as EventListener)
+    );
+
+    // 全局 selectionchange（处理方向键移动光标等场景）
+    document.addEventListener('selectionchange', updateCursorPosition);
+
+    // 立即计算一次初始位置
+    updateCursorPosition();
+
+    return () => {
+      events.forEach(event =>
+        el.removeEventListener(event, updateCursorPosition as EventListener)
+      );
+      document.removeEventListener('selectionchange', updateCursorPosition);
+    };
+  }, [updateCursorPosition]);
 
   /**
    * 执行命令
@@ -485,8 +557,9 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
 
         {/* 命令输入行 */}
         <div className="mt-4 pt-2 border-t border-gray-800/50">
-          <div 
-            className="command-line flex items-center font-mono text-sm"
+          <div
+            ref={commandLineRef}
+            className="command-line relative flex items-center font-mono text-sm"
             onClick={() => inputRef.current?.focus()}
           >
             {/* 提示符 */}
@@ -516,8 +589,8 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
               spellCheck={false}
             />
             
-            {/* 始终显示自定义粗光标 */}
-            <Cursor engineRef={engineRef} />
+            {/* 自定义粗光标 - 跟随输入光标位置 */}
+            <Cursor engineRef={engineRef} position={cursorPosition} />
 
             {/* Tab 补全建议 */}
             {suggestion && (
