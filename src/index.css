@@ -36,9 +36,9 @@ html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  background-color: var(--terminal-bg);
   color: var(--terminal-text);
+  /* 透明，让底层 video 壁纸透出 */
+  background-color: transparent;
   font-family: var(--font-mono);
   line-height: 1.5;
   letter-spacing: 0.02em;
@@ -120,6 +120,18 @@ body {
   51%,
   100% {
     opacity: 0;
+  }
+}
+
+/* Logo 字符呼吸/波浪动画 */
+@keyframes logoPulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(0,255,153,0.6), 0 0 16px rgba(0,255,153,0.2);
+  }
+  50% {
+    opacity: 0.55;
+    text-shadow: 0 0 3px rgba(0,255,153,0.3), 0 0 6px rgba(0,255,153,0.1);
   }
 }
 

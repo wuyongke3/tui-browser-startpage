@@ -41,28 +41,26 @@ function getSystemInfoString(): string {
   return `${os} | ${date}`;
 }
 
-/** 生成默认欢迎信息 */
+/** 生成默认欢迎信息（纯 ASCII，确保等宽对齐） */
 function generateWelcomeMessage(username: string): string {
   const systemInfo = getSystemInfoString();
-  
+  const line = '+------------------------------+';
+
   return `
-╔══════════════════════════════════════════════╗
-║                                              ║
-║   █▀▀█ ▀▀█▀▀ █▀▀█ █▀▀▄ █▀▀█ █  █ █▀▀▀     ║
-║   █  █   █   █▄▄█ █  █ █  █ █  █ █ ▀▀     ║
-║   █▄▄█   █   █  █ █▄▀▀ ▀▀▀▀ ▀▄▄▀ █▄▄▄     ║
-║                                              ║
-║         可插拔终端 v2.0                       ║
-║                                              ║
-╠══════════════════════════════════════════════╣
-║  用户: ${username.padEnd(36)}║
-║  系统: ${systemInfo.padEnd(35)}║
-╠══════════════════════════════════════════════╣
-║  输入 "help" 查看可用命令                    ║
-║                                              ║
-║  Author: easygo | github.com/wuyongke3      ║
-║  商用授权请联系作者                          ║
-╚══════════════════════════════════════════════╝
+${line}
+|  &&&&&   GGG    OOO          |
+|    N    G      O   O         |
+|    N    G====  O   O         |
+|    U    G   I  O   O         |
+|    V     GG N   OOO          |
+|                              |
+|      Terminal v2.0           |
+${line}
+|  ${username.padEnd(25)}   |
+|  ${systemInfo.padEnd(25)}  | 
+${line}
+|  help -> commands            |
+${line}
 `.trim();
 }
 
@@ -150,6 +148,29 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
   const [currentInput, setCurrentInput] = useState('');
   // 光标跟随位置（相对于 command-line 容器）
   const [cursorPosition, setCursorPosition] = useState<{ top: number; left: number; height: number } | null>(null);
+  // 背景模式：dynamic=视频壁纸, static=静态图片
+  const [isDynamicBg, setIsDynamicBg] = useState(() => {
+    try { return localStorage.getItem('terminal_bg_mode') !== 'static' }
+    catch { return true }
+  });
+  // 欢迎信息打字机动画：当前已显示的字符数，null 表示动画未开始/已结束
+  const [welcomeCharCount, setWelcomeCharCount] = useState<number | null>(null);
+  const fullWelcomeRef = useRef('');
+
+  /** 判断字符是否属于 logo 图案区域（用于施加特殊动画） */
+  const isLogoChar = (char: string): boolean => {
+    return /[_|\\/]/.test(char);
+  };
+
+  /** 切换背景模式并持久化 */
+  const toggleBgMode = useCallback(() => {
+    setIsDynamicBg(prev => {
+      const next = !prev;
+      try { localStorage.setItem('terminal_bg_mode', next ? 'dynamic' : 'static') }
+      catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   // 优先使用传入的 username，否则自动获取系统用户名
   const [currentUsername, setCurrentUsername] = useState(username || getSystemUsername());
   const [isUseMode, setIsUseMode] = useState(false);
@@ -196,9 +217,12 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
         setProgressInfo(state.progressInfo || null);
       });
 
-      // 显示欢迎信息（使用有效的用户名）
-      const msg = welcomeMessage || generateWelcomeMessage(effectiveUsername);
-      engine.print(msg, 'info');
+      // 生成完整欢迎信息，存入 ref 供打字机动画使用
+      const fullMsg = welcomeMessage || generateWelcomeMessage(effectiveUsername);
+      fullWelcomeRef.current = fullMsg;
+
+      // 启动打字机动画：逐字符显示欢迎信息
+      setWelcomeCharCount(0);
 
       // 标记就绪
       setIsReady(true);
@@ -218,6 +242,30 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 打字机动画：逐字符显示欢迎信息
+  useEffect(() => {
+    if (welcomeCharCount === null || welcomeCharCount === -1) return; // 未开始或已完成
+
+    const fullText = fullWelcomeRef.current;
+    if (!fullText) return;
+
+    // 动画已完成，保留显示（-1 = 已完成）
+    if (welcomeCharCount >= fullText.length) {
+      setWelcomeCharCount(-1);
+      return;
+    }
+
+    // 根据字符类型调整打字速度（换行稍快，普通字符适中）
+    const char = fullText[welcomeCharCount];
+    const delay = char === '\n' ? 20 : 18 + Math.random() * 25;
+
+    const timer = setTimeout(() => {
+      setWelcomeCharCount(prev => (prev ?? 0) + 1);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [welcomeCharCount]);
 
   // 暴露 API 给父组件
   useImperativeHandle(ref, () => ({
@@ -384,6 +432,21 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
         break;
 
       case 'Escape':
+        e.preventDefault();
+        // Esc 始终退出 use 模式
+        if (isUseMode) {
+          setIsUseMode(false);
+          engineRef.current?.setState(s => ({ ...s, isUseMode: false }));
+          setCurrentInput('');
+          if (inputRef.current) inputRef.current.textContent = '';
+          break;
+        }
+        // 非执行中 → 清空输入
+        setCurrentInput('');
+        setSuggestion('');
+        if (inputRef.current) inputRef.current.textContent = '';
+        break;
+
       case 'c':
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
@@ -468,27 +531,13 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
     return currentUsername;
   };
 
-  // 获取主题样式
+  // 获取主题样式（不再包含背景图）
   const getThemeStyle = (): React.CSSProperties => {
     const config = engineRef.current?.getConfig();
     const style: React.CSSProperties = {};
 
-    // 优先使用用户配置的背景，否则使用默认底图 bg.png
-    if (config?.backgroundImage) {
-      style.backgroundImage = `url(${config.backgroundImage})`;
-      style.backgroundSize = 'cover';
-      style.backgroundPosition = 'center';
-      style.backgroundRepeat = 'no-repeat';
-    } else {
-      // 默认全屏底图
-      style.backgroundImage = 'url(/bg.png)';
-      style.backgroundSize = 'cover';
-      style.backgroundPosition = 'center';
-      style.backgroundRepeat = 'no-repeat';
-    }
-
-    // 底层深色背景（底图加载前的兜底 + 半透明叠加）
-    style.backgroundColor = config?.backgroundColor || '#0a0a0a';
+    // 容器背景透明，让底层 fixed 背景图透出来
+    style.backgroundColor = 'transparent';
 
     style.height = typeof height === 'number' ? `${height}px` : height;
 
@@ -496,17 +545,96 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
   };
 
   return (
-    <div
-      className={`terminal-container relative w-full overflow-hidden ${className}`}
-      style={{
-        ...getThemeStyle(),
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-        fontSize: `${fontSize}px`,
-        paddingLeft: `14px`,
-      }}
-      onClick={() => inputRef.current?.focus()}
-    >
-      {/* 玻璃磨砂遮罩层 - 叠加在底图之上 */}
+    <>
+      {/* 动态视频壁纸 - 全屏固定底层 */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          width: '100vw',
+          height: 'auto',
+          zIndex: -1,
+          pointerEvents: 'none',
+          opacity: isDynamicBg ? 1 : 0,
+          transition: 'opacity 0.5s ease',
+        }}
+        src="/bg.mp4"
+      />
+      {/* 静态图片壁纸 - 全屏固定底层 */}
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: -1,
+          pointerEvents: 'none',
+          opacity: isDynamicBg ? 0 : 1,
+          transition: 'opacity 0.5s ease',
+          backgroundImage: 'url(/bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+
+      {/* 右上角背景切换按钮 - 极客风 */}
+      <button
+        onClick={toggleBgMode}
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 9999,
+          ...(isDynamicBg ? {
+            background: 'rgba(0,255,0,0.06)',
+            borderColor: 'rgba(0,255,0,0.25)',
+            color: '#00ff00',
+            boxShadow: '0 0 8px rgba(0,255,0,0.1), inset 0 0 8px rgba(0,255,0,0.05)',
+          } : {
+            background: 'rgba(0,180,255,0.06)',
+            borderColor: 'rgba(0,180,255,0.25)',
+            color: '#00b4ff',
+            boxShadow: '0 0 8px rgba(0,180,255,0.1), inset 0 0 8px rgba(0,180,255,0.05)',
+          }),
+        }}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded cursor-pointer border transition-all duration-200"
+        title={isDynamicBg ? '切换到静态背景' : '切换到动态背景'}
+      >
+        {/* 动态/静态图标 */}
+        <span style={{ fontSize: 13, lineHeight: 1 }}>
+          {isDynamicBg ? '▶' : '■'}
+        </span>
+        {/* 文字 */}
+        <span style={{
+          fontSize: 11,
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.08em',
+          textShadow: isDynamicBg ? '0 0 6px rgba(0,255,0,0.5)' : '0 0 6px rgba(0,180,255,0.5)',
+        }}>
+          {isDynamicBg ? 'DYNAMIC' : 'STATIC'}
+        </span>
+      </button>
+
+      {/* 终端主容器 - 确保在背景视频/图片上层 */}
+      <div
+        className={`terminal-container relative w-full ${className}`}
+        style={{
+          ...getThemeStyle(),
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          fontSize: `${fontSize}px`,
+          paddingLeft: `14px`,
+          zIndex: 1,
+        }}
+        onClick={() => inputRef.current?.focus()}
+      >
+      {/* 玻璃磨砂遮罩层 - 叠加在背景之上 */}
       <div
         className="glass-overlay absolute inset-0 pointer-events-none z-[5]"
         style={{
@@ -534,6 +662,60 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
               <div className="w-3 h-3 rounded-full bg-green-500/80" />
             </div>
           </header>
+        )}
+
+        {/* 欢迎信息打字机动画 - 字符级动态效果 */}
+        {welcomeCharCount !== null && (
+          <pre
+            style={{
+              margin: 0,
+              padding: 0,
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+              fontSize: `${typeof fontSize === 'number' ? fontSize : 14}px`,
+              lineHeight: 1.2,
+              color: '#00ff00',
+              whiteSpace: 'pre',
+              overflow: 'hidden',
+            }}
+          >
+            {fullWelcomeRef.current.slice(0, welcomeCharCount === -1 ? fullWelcomeRef.current.length : welcomeCharCount).split('').map((char, i) => {
+              // 换行符用 <br /> 替代，确保正确换行
+              if (char === '\n') return <br key={i} />;
+              const logo = isLogoChar(char);
+              return (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-block',
+                    color: logo ? '#00ff99' : '#00ff00',
+                    textShadow: logo
+                      ? `0 0 ${6 + Math.sin(i * 0.4) * 4}px rgba(0,255,153,${0.5 + Math.sin(i * 0.3) * 0.3})`
+                      : '0 0 6px rgba(0,255,0,0.3)',
+                    animation: logo
+                      ? `logoPulse ${1.2 + (i % 5) * 0.15}s ease-in-out infinite`
+                      : undefined,
+                    animationDelay: `${(i % 8) * 0.08}s`,
+                  }}
+                >
+                  {char}
+                </span>
+              );
+            })}
+            {/* 打字光标（仅动画进行中显示） */}
+            {welcomeCharCount > 0 && welcomeCharCount !== -1 && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '0.6em',
+                  height: '1em',
+                  backgroundColor: '#00ff00',
+                  verticalAlign: 'text-bottom',
+                  marginLeft: '1px',
+                  animation: 'cursorBlink 0.7s step-end infinite',
+                }}
+              />
+            )}
+          </pre>
         )}
 
         {/* 输出显示 */}
@@ -610,6 +792,7 @@ const Terminal = forwardRef<TerminalHandle, ITerminalProps>(({
         )}
       </div>
     </div>
+    </>
   );
 });
 

@@ -38,23 +38,15 @@
         user-select: text;
       }
 
-      /* 隐藏滚动条但保持功能 */
+      /* 隐藏滚动条但保留滚动功能 */
       ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 0;
+        height: 0;
       }
 
-      ::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.3);
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0, 255, 0, 0.3);
-        border-radius: 3px;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 255, 0, 0.5);
+      /* Firefox 隐藏滚动条 */
+      * {
+        scrollbar-width: none;
       }
     </style>
 

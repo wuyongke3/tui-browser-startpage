@@ -140,14 +140,15 @@ export function handleUseSelection(
 const addCommand: ICommandDefinition = {
   name: 'add',
   description: '添加新的快速连接',
-  usage: 'add <URL>',
+  usage: 'add <URL> [名称]',
   requireArgs: true,
-  argsDescription: '网址 URL',
+  argsDescription: '网址 URL 和可选的连接名称',
   async execute(ctx) {
     let url = ctx.args[0];
+    const customName = ctx.args[1]?.trim();
 
     if (!url?.trim()) {
-      ctx.output('请提供 URL。用法: add <URL>', 'error');
+      ctx.output('请提供 URL。用法: add <URL> [名称]', 'error');
       return;
     }
 
@@ -172,9 +173,11 @@ const addCommand: ICommandDefinition = {
       return;
     }
 
-    // 从 URL 提取名称
-    const hostname = new URL(url).hostname.replace('www.', '');
-    const name = hostname.charAt(0).toUpperCase() + hostname.slice(1).split('.')[0];
+    // 优先使用用户指定的名称，否则从 URL 提取
+    const name = customName || (() => {
+      const hostname = new URL(url).hostname.replace('www.', '');
+      return hostname.charAt(0).toUpperCase() + hostname.slice(1).split('.')[0];
+    })();
 
     // 获取 favicon
     const icon = `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`;
