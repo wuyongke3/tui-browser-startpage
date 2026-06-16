@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Terminal Startpage",
+  "name": "TGO(仿终端浏览器起始页)",
   "version": "1.0.0",
-  "description": "可插拔终端风格浏览器起始页 | Author: easygo",
+  "description": "开源，可插拔终端风格浏览器起始页 | Author: easygo",
   "author": "easygo <https://github.com/wuyongke3>",
   "homepage_url": "https://github.com/wuyongke3",
   "icons": {
